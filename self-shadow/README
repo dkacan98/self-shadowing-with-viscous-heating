@@ -1,0 +1,4 @@
+1) Run disk_single_run.py to run the modeling. This will give the input files for radmc3d and output files of radm3d inside a directory called outputs.
+2) Run diagnosticplots.py inside outputs directory. This will plot dust density and temperature distributions and dust opacity graph. 
+3) Run createfits.py inside outputs directory. This will create necessary fits file out of image.out radmc3d output. 
+4) Run spectra.py inside outputs directory. This will plot the spectrum from the fits file.
