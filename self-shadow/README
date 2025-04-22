@@ -2,3 +2,9 @@
 2) Run diagnosticplots.py inside outputs directory. This will plot dust density and temperature distributions and dust opacity graph. 
 3) Run createfits.py inside outputs directory. This will create necessary fits file out of image.out radmc3d output. 
 4) Run spectra.py inside outputs directory. This will plot the spectrum from the fits file.
+
+Run iteration_driver.py to run the model iteratively. It first goes to the disk_single_run script and puts a density distribution based on vertically isothermal assumption.
+Then runs thermal radmc and get the initial temperature distribution. Then goes to vertical_hydrostatics script to calculate density from
+vertical hydrostatic equilibrium with given temperature distribution. It uses this new density in thermal radmc calculations to come up
+with a new temperature. This iteration keeps going until a given # of iterations, hoping to get density differences between two steps
+to be lower than 0.01 
