@@ -50,16 +50,16 @@ class radmc3d():
 		self.params =  {
 	"nphot": 1e5,
 	"nr": 200,
-	"ntheta": 100,
+	"ntheta": 150,
 	"nphi": 1,
 	"rin": 1,
 	"rout": 100.0,
-	"thetaup": 1.5,
+	"thetaup": 0.6,
 	"sigmag0": 100.0,
 	"sigmad0": 10.0,
 	"plsig": -1.0,
-	"hr0": 0.1,
-	"plh": 1.25,
+	"hr0": 0.0425,
+	"plh": 2/7,
 	"R_c": 50.0,
 	"mstar": 1.0,
 	"rstar": 2.0,
@@ -126,7 +126,6 @@ class radmc3d():
 		lam34    = np.logspace(np.log10(lam3),np.log10(lam4),n34,endpoint=True)
 		lam      = np.concatenate([lam12,lam23,lam34])
 		nlam     = lam.size
-
 		self.lam = lam
 		self.nlam = nlam
 	
@@ -178,18 +177,19 @@ class radmc3d():
 		zr       = np.pi/2.e0 - qq[1]  #theta changed to being measured from the mid-plane
 		#
 		self.rr = rr
+		self.tt = tt
 		self.zr = zr
 		return self
 
 #this creates [nr,ntheta,1] matrix for rr,tt,pp                        
 							#rr=[1,2,3,4,5,....] 	             tt=[7,8,9,0,....]   pp=[pi] np=1
-					                #rr=[1,2,3,4,5,....] (nr)	     tt=[7,7,7,7,7,....]    (nr) 
-						        #    [1,2,3,4,5,....]		        [8,8,8,8,8,....]
-					                #    [1,2,3,4,5,....] 	 	        [9,9,9,9,9,....]
-			                                #     .				        [0,0,0,0,0,....]
+					                #rr=[1,1,1,1,1,....] (ntheta)	     tt=[7,8,9,0,....]    (ntheta) 
+						        #    [2,2,2,2,2,....]		        [7,8,9,0,....]
+					                #    [3,3,3,3,3,....] 	 	        [7,8,9,0,....]
+			                                #     .				        [7,8,9,0,....]
  						        #     .				          .
 						        #     . 				  .
-							#    (ntheta)			         (ntheta)
+							#    (nr)			         (nr)
 #rr*tt operations are elementwise. So these rr tt matrix forms are good for that purpose.
 
 	def density_calc(self):
@@ -208,15 +208,16 @@ class radmc3d():
 
 		r=self.rr[:,0,0]    #taking the relevant r and h values out of meshgrids of (200,100,1), to plot r vs sigma and r vs h
 		surface_density=sigmad[:,0,0]
+		self.surface_density=surface_density
 		h=hh[:,0,0]
 		r=r/self.au
 		h=h/self.au
 		
 		p=pd.DataFrame(data={"col1":r,"col2":surface_density})
-		p.to_csv("/home/dkacan/research/radmc3d-2.0-master/self-shadow/surfacedensity.csv",sep=',',index=False)
+		p.to_csv("/scratch/bell/dkacan/surfacedensity.csv",sep=',',index=False)
 
 		f=pd.DataFrame(data={"col1":r,"col2":h})
-		f.to_csv("/home/dkacan/research/radmc3d-2.0-master/self-shadow/rvsh.csv",sep=',',index=False)
+		f.to_csv("/scratch/bell/dkacan/rvsh.csv",sep=',',index=False)
 		
 
 	def heatrate_per_volume_calc(self):
@@ -229,7 +230,7 @@ class radmc3d():
 
 	def write_heatrate(self):
         #writes the heat rate per volume in each grid to the radmc input file.
-		with open('heatsource.inp','w+') as f:
+		with open(os.path.join(self.dirname_out,'heatsource.inp'),'w+') as f:
 			f.write('1\n')
 			f.write('%d\n'%(self.nr*self.ntheta*self.nphi))
 			for i in range(self.nspecies):
@@ -239,14 +240,14 @@ class radmc3d():
 			
 	def write_wavelengths(self):
 	#writes the wavelength file used to do the thermal mcmc. 
-		with open('wavelength_micron.inp','w+') as f:
+		with open(os.path.join(self.dirname_out,'wavelength_micron.inp'),'w+') as f:
 			f.write('%d\n'%(self.nlam))
 			for value in self.lam:
 		    		f.write('%13.6e\n'%(value))
 
 	def write_starsinp(self):
 	#writes stellar radiation field to the radmc input file
-		with open('stars.inp','w+') as f:
+		with open(os.path.join(self.dirname_out,'stars.inp'),'w+') as f:
 			f.write('2\n')
 			f.write('1 %d\n\n'%(self.nlam))
 			f.write('%13.6e %13.6e %13.6e %13.6e %13.6e\n\n'%(self.rstar,self.mstar,self.pstar[0],self.pstar[1],self.pstar[2]))
@@ -256,7 +257,7 @@ class radmc3d():
 
 	def write_grid(self):
 	#writes grid to the radmc input file
-		with open('amr_grid.inp','w+') as f: 
+		with open(os.path.join(self.dirname_out,'amr_grid.inp'),'w+') as f: 
 			f.write('1\n')                       # iformat
 			f.write('0\n')                       # AMR grid style  (0=regular grid, no AMR)
 			f.write('100\n')                     # Coordinate system: spherical
@@ -272,7 +273,7 @@ class radmc3d():
 
 	def write_density(self):
 	#write dust density to the radmc input file
-		with open('dust_density.inp','w+') as f:
+		with open(os.path.join(self.dirname_out,'dust_density.inp'),'w+') as f:
 			f.write('1\n')                       # Format number
 			f.write('%d\n'%(self.nr*self.ntheta*self.nphi))     # Nr of cells
 			f.write('{}\n'.format(self.nspecies))    # Nr of dust species. {} is the placeholder. nspecies value will be put there.
@@ -287,13 +288,13 @@ class radmc3d():
 		runoptool(f'optool -c pyr-mg80 0.85\
                            -c c 0.15\
                            -p 0.25 -dhs -radmc dust\
-                           -a 0.001 0.1\
+                           -a 0.01 100\
                            {scat} -lmin 1e-2 -chop 3 -nlam 1000 -na 30 -o {self.dirname_out}',verbose = self.verbose)
 		return self
 
 	def write_dustopac(self):
         #puts the output of optool into a format that radmc wants.
-		with open('dustopac.inp','w+') as f:
+		with open(os.path.join(self.dirname_out,'dustopac.inp'),'w+') as f:
 			f.write('2               Format number of this file\n')
 			f.write('{}               Nr of dust species\n'.format(self.nspecies))
 			f.write('============================================================================\n')
@@ -305,7 +306,7 @@ class radmc3d():
 
 	def write_radmc3dinp(self):
         #a reqired input file for radmc runs that gives a couple of settings. more can be added. 
-		with open('radmc3d.inp','w+') as f:
+		with open(os.path.join(self.dirname_out,'radmc3d.inp'),'w+') as f:
 			f.write('nphot = %d\n'%(self.nphot))
 			f.write('scattering_mode_max = 1\n')
 			f.write('iranfreqmode = 1\n')
@@ -328,10 +329,10 @@ class radmc3d():
 	    reshape((self.nr,self.ntheta,self.nphi),order='F')[:,:,0]
 	    return temperature
 
-
+'''
 def run_simulation():
 # run function to run all needed functions in order. 
-	sim = radmc3d(dirname_out="/home/dkacan/research/radmc3d-2.0-master/self-shadow/outputs")
+	sim = radmc3d(dirname_out="/home/dkacan/research/radmc3d-2.0-master/self-shadow/Chaing_Goldreich_scale_height/")
 	sim.paramsinit()
 	sim.make_wavelengths()
 	sim.grid_edge_center()
@@ -357,3 +358,4 @@ def run_simulation():
 	proces = subprocess.run([run_statement],shell=True, stderr=shut_up, stdout=shut_up)
 #execution of the running function
 run_simulation()
+'''
